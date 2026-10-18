@@ -21,6 +21,7 @@ import { useSoroban } from "../context/useSoroban";
 import { useContractRead, useContractResult, useIndexedList, useProgramme } from "../hooks";
 import { fetchProgrammes } from "../lib/indexer";
 import { formatAmount } from "../lib/amount";
+import { isSampleProgrammeId } from "../lib/programmeView";
 import { registryVerificationCopy } from "../lib/registryVerification";
 import { fetchTokenName, parseTokenName } from "../lib/token";
 import "./ProgrammeDetail.css";
@@ -774,7 +775,7 @@ export const ProgrammeDetail = () => {
               programmeId={programmeId}
               phase={phaseName}
               quorum={config.data?.quorum ?? 1}
-              isSample={isDefault}
+              isSample={isSampleProgrammeId(programmeId)}
               asset={ASSET_LABEL}
             />
           </div>

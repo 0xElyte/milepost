@@ -9,6 +9,7 @@ import { useContractResult } from '../../hooks/useContractRead';
 import { SorobanContext } from '../../context/sorobanStore';
 import { formatAmount, parseAmount, describeAmount } from '../../lib/amount';
 import { awardsToCsv, downloadFile } from '../../lib/csv';
+import { isSampleProgrammeId } from '../../lib/programmeView';
 import { FIXTURE_AWARDS } from '../../fixtures/programmeFixtures';
 import { Badge, Button } from '../ui';
 import './AwardsTab.css';
@@ -174,6 +175,11 @@ export const AwardsTab: FC<AwardsTabProps> = ({
   isSample = false,
   asset = 'USDC',
 }) => {
+  // A caller may only relax this to a sample when the id really is a fixture id;
+  // a contract-shaped id can never be a sample, so its awards always come from
+  // the index.
+  const sample = isSample && isSampleProgrammeId(programmeId);
+
   const {
     data: fetchedAwards,
     loading,
@@ -181,13 +187,13 @@ export const AwardsTab: FC<AwardsTabProps> = ({
   } = useIndexedList<IndexedAward[]>(
     () => fetchAwards(programmeId),
     [programmeId],
-    { enabled: Boolean(programmeId) && !isSample },
+    { enabled: Boolean(programmeId) && !sample },
   );
 
   const awards = useMemo(() => {
-    if (isSample) return phase === 'Settled' ? FIXTURE_AWARDS : [];
+    if (sample) return phase === 'Settled' ? FIXTURE_AWARDS : [];
     return fetchedAwards ?? [];
-  }, [isSample, phase, fetchedAwards]);
+  }, [sample, phase, fetchedAwards]);
 
   const advisoryNote = isSample
     ? 'Awards use the middle reviewer vote after enough reviewers have voted. Listed from the public index, advisory.'
@@ -222,7 +228,6 @@ export const AwardsTab: FC<AwardsTabProps> = ({
         <div className="awards-tab__actions">
           <Button
             variant="secondary"
-            size="sm"
             icon={<Download size={14} aria-hidden="true" />}
             onClick={handleDownloadCsv}
           >
