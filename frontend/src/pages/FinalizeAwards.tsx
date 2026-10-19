@@ -2,9 +2,7 @@ import { useMemo, useState, type FormEvent } from 'react';
 import {
   AlertTriangle,
   ArrowRight,
-  Award as AwardIcon,
   CheckCircle,
-  Coins,
   Globe,
   Landmark,
   Lock,
@@ -28,7 +26,7 @@ import { useSoroban } from '../context/useSoroban';
 import { fetchProgrammes } from '../lib/indexer';
 import { AsyncView, Loading } from '../components/state/AsyncStates';
 import { PausedBanner } from '../components/programme/PausedBanner';
-import { Badge, Button, Card, Field, PhaseBadge, Select } from '../components/ui';
+import { Badge, Button, Card, Field, PhaseBadge, Select, Stat } from '../components/ui';
 import { formatAmount } from '../lib/amount';
 import { explainCode } from '../lib/errors';
 import { FIXTURE_CHAIN, FIXTURE_PROGRAMMES, chainFor } from '../fixtures/programmes';
@@ -467,11 +465,11 @@ export const FinalizeAwards = () => {
   };
 
   return (
-    <div className="dashboard-container finalize-page">
+    <div className="finalize-page">
       <PausedBanner client={programme} />
 
-      <header className="dashboard-header animate-fade-up">
-        <h1>Finalize Awards</h1>
+      <header className="finalize-header animate-fade-up">
+        <h2>Finalize awards</h2>
         <p className="typo-text text-muted">
           Settle applications with enough reviewer votes into awards. The payment mode you pick decides whether released money can reach an unverified destination.
         </p>

@@ -1,11 +1,13 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { MoneyRow } from '../components/programme/MoneyRow';
+import { ModePill } from '../components/ui';
 import '../components/programme/phasePill.css';
 import { Skeleton, Empty } from '../components/state/AsyncStates';
 import { describeAmount } from '../lib/amount';
 import { useIndexedList, useProgrammeChainReads, useRegistryProgrammes } from '../hooks';
 import { useWallet } from '../context/useWallet';
+import { useAnnouncer } from '../context/useAnnouncer';
 import { fetchMeta, fetchProgrammes, isStale } from '../lib/indexer';
 import { FIXTURE_USER_ROLES, ROLE_LABELS } from '../fixtures/userRoles';
 import {
@@ -171,6 +173,23 @@ export const ProgrammeDirectory = () => {
   // this filtered view rather than an empty directory.
   const carriedSearch = directorySearch(params.toString());
 
+  // Issue #485: this list used to be a live region, so every filter change
+  // read every card aloud. Announce just the new count instead — once per
+  // filter, search or sort change. The ref starts at the initial key so the
+  // first load says nothing, and `loading` holds the announcement until the
+  // data lands rather than speaking a count that is about to change.
+  const announce = useAnnouncer();
+  const filterKey = `${query}|${phase}|${sort}|${yoursOnly ? 'yours' : ''}`;
+  const announcedKey = useRef(filterKey);
+
+  useEffect(() => {
+    if (loading || announcedKey.current === filterKey) return;
+    announcedKey.current = filterKey;
+    announce(
+      shown.length === 1 ? '1 programme matches' : `${shown.length} programmes match`,
+    );
+  }, [filterKey, loading, shown.length, announce]);
+
   return (
     <div className="directory-container">
       <section aria-labelledby="directory-heading" className="directory-section">
@@ -288,7 +307,9 @@ export const ProgrammeDirectory = () => {
           </div>
         )}
 
-        <div aria-live="polite" aria-busy={loading} className="directory-body">
+        {/* Not a live region: the count is announced through the shared
+            announcer, so replacing these cards reads nothing (#485). */}
+        <div aria-busy={loading} className="directory-body">
           {loading && (
             <div className="directory-grid">
               {[0, 1, 2].map((i) => (
@@ -396,7 +417,13 @@ function ProgrammeCard({
         )}
 
         <div className="directory-card-new__foot">
-          <span className="directory-card-new__sample">{tag}</span>
+          <span className="directory-card-new__sample">
+            {programme.sample ? 'Sample data' : 'Sample chain read'}
+          </span>
+          <span className="directory-card-new__mode">
+            <span className="directory-card-new__mode-label">Planned default</span>
+            <ModePill mode={chain.mode} />
+          </span>
           <span className="directory-card-new__cta">{programmeCta(chain.phase)} →</span>
         </div>
       </article>
