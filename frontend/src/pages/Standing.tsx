@@ -402,6 +402,12 @@ export const Standing = () => {
     { contract: 'record', enabled: Boolean(address) },
   );
 
+  const standing = useContractResult<OnChainStanding>(
+    () => record.get({ subject: address ?? '' }),
+    [record, address],
+    { contract: 'record', enabled: Boolean(address) },
+  );
+
   return (
     <div className="standing-page">
       <header className="standing-head">

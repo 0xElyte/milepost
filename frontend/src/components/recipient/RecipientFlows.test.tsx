@@ -803,3 +803,138 @@ describe('Recipient Issues Suite (#272, #273, #274, #275)', () => {
     });
   });
 });
+
+  describe('Issue #276 — Recipient: withdraw an application', () => {
+    // A real (56-char C-prefixed) programme id — uses on-chain path.
+    const openApplication: RecipientApplicationFixture = {
+      programmeId: REAL_PROGRAMME,
+      programmeName: 'Vocational Training Stipends Q3',
+      phase: 'Review',
+      requested: '12000000000',
+      submittedLedger: 4704410,
+      votes: ['9000000000'],
+      quorum: 3,
+    };
+
+    // A sample (non-contract) programme id — stand-in path.
+    const sampleApplication: RecipientApplicationFixture = {
+      ...openApplication,
+      programmeId: 'CDV7VOCATIONALCOHORT3PL5QZ2WM8RT4HX6KJ9A3FC',
+      sample: true,
+    };
+
+    it('shows the withdraw button on a non-finalised, non-withdrawn application', () => {
+      render(
+        <MemoryRouter>
+          <ApplicationTimelineList applications={[openApplication]} />
+        </MemoryRouter>
+      );
+      expect(screen.getByRole('button', { name: /withdraw application/i })).toBeDefined();
+    });
+
+    it('does not show the withdraw button on a finalised application', () => {
+      render(
+        <MemoryRouter>
+          <ApplicationTimelineList applications={[{ ...openApplication, finalized: true }]} />
+        </MemoryRouter>
+      );
+      expect(screen.queryByRole('button', { name: /withdraw application/i })).toBeNull();
+    });
+
+    it('does not show the withdraw button on an already-withdrawn application', () => {
+      render(
+        <MemoryRouter>
+          <ApplicationTimelineList applications={[{ ...openApplication, withdrawn: true }]} />
+        </MemoryRouter>
+      );
+      expect(screen.queryByRole('button', { name: /withdraw application/i })).toBeNull();
+    });
+
+    it('asks for confirmation before withdrawing', () => {
+      render(
+        <MemoryRouter>
+          <ApplicationTimelineList applications={[openApplication]} />
+        </MemoryRouter>
+      );
+      fireEvent.click(screen.getByRole('button', { name: /withdraw application/i }));
+      expect(screen.getByText(/This cannot be undone/i)).toBeDefined();
+      expect(screen.getByRole('button', { name: /yes, withdraw/i })).toBeDefined();
+      expect(screen.getByRole('button', { name: /cancel/i })).toBeDefined();
+    });
+
+    it('cancel hides the confirmation step without withdrawing', () => {
+      render(
+        <MemoryRouter>
+          <ApplicationTimelineList applications={[openApplication]} />
+        </MemoryRouter>
+      );
+      fireEvent.click(screen.getByRole('button', { name: /withdraw application/i }));
+      fireEvent.click(screen.getByRole('button', { name: /cancel/i }));
+
+      expect(screen.queryByText(/This cannot be undone/i)).toBeNull();
+      expect(screen.getByRole('button', { name: /withdraw application/i })).toBeDefined();
+      expect(programme.withdraw).not.toHaveBeenCalled();
+    });
+
+    it('real: calls programme.withdraw, shows success, and hides the action', async () => {
+      render(
+        <MemoryRouter>
+          <ApplicationTimelineList applications={[openApplication]} />
+        </MemoryRouter>
+      );
+      fireEvent.click(screen.getByRole('button', { name: /withdraw application/i }));
+      fireEvent.click(screen.getByRole('button', { name: /yes, withdraw/i }));
+
+      expect(await screen.findByText(/Application withdrawn/i)).toBeDefined();
+      expect(programme.withdraw).toHaveBeenCalledWith({ applicant: RECIPIENT });
+      expect(mockAnnounce).toHaveBeenCalledWith('Application withdrawn.');
+
+      // Withdraw button is gone once confirmed.
+      expect(screen.queryByRole('button', { name: /withdraw application/i })).toBeNull();
+    });
+
+    it('sample: uses the stand-in path and shows success without calling the contract', async () => {
+      render(
+        <MemoryRouter>
+          <ApplicationTimelineList
+            applications={[sampleApplication]}
+          />
+        </MemoryRouter>
+      );
+      fireEvent.click(screen.getByRole('button', { name: /withdraw application/i }));
+      fireEvent.click(screen.getByRole('button', { name: /yes, withdraw/i }));
+
+      expect(await screen.findByText(/Application withdrawn/i)).toBeDefined();
+      expect(programme.withdraw).not.toHaveBeenCalled();
+    });
+
+    it('surfaces AlreadyFinalized (error 13) through explain() when the application was settled concurrently', async () => {
+      programme = makeProgramme({ withdrawError: 'Error(Contract, #13)' });
+
+      render(
+        <MemoryRouter>
+          <ApplicationTimelineList applications={[openApplication]} />
+        </MemoryRouter>
+      );
+      fireEvent.click(screen.getByRole('button', { name: /withdraw application/i }));
+      fireEvent.click(screen.getByRole('button', { name: /yes, withdraw/i }));
+
+      const err13 = explainCode('program', 13);
+      expect(await screen.findByText(err13.message)).toBeDefined();
+    });
+
+    it('shows withdrawn state in the timeline steps when already withdrawn', () => {
+      render(
+        <MemoryRouter>
+          <ApplicationTimelineList
+            applications={[{ ...openApplication, withdrawn: true }]}
+          />
+        </MemoryRouter>
+      );
+      expect(
+        screen.getByText(/Withdrawn — you cancelled this application/i)
+      ).toBeDefined();
+      expect(screen.getByText('No award will be set.')).toBeDefined();
+    });
+  });
+});

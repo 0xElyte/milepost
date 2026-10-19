@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import type { RecipientApplicationFixture } from '../../fixtures/recipientFixtures';
 import { applicationStatus, applicationSteps } from '../../lib/applicationView';
@@ -13,6 +14,7 @@ interface ApplicationTimelineListProps {
    * for tests and for screens that already hold the applications.
    */
   applications?: RecipientApplicationFixture[];
+  onWithdrawn?: (programmeId: string) => void;
 }
 
 function phaseBadgeClass(phase: RecipientApplicationFixture['phase']): string {
@@ -108,8 +110,8 @@ export function ApplicationTimelineList({ applications }: ApplicationTimelineLis
                     <span className={`timeline-step__marker ${markerClass}`} aria-hidden="true" />
                     <div className="timeline-step__content">
                       <div
-                        className={`timeline-step__title-row ${
-                          isEmphasized ? 'timeline-step__title-row--emphasized' : ''
+                        className={`timeline-step__title-row${
+                          isEmphasized ? ' timeline-step__title-row--emphasized' : ''
                         }`}
                       >
                         <span>{step.title}</span>

@@ -69,7 +69,6 @@ export function AwardCard({
   const trancheBase = award.tranches > 0 ? grantedBigInt / BigInt(award.tranches) : 0n;
   const releasedAmount = trancheBase * BigInt(releasedCount);
 
-  // Compute status for each tranche tile
   const isProofReady = award.attestationReady && releasedCount === award.tranchesReleased;
   const canRelease = isProofReady && releasedCount < award.tranches && releaseStatus !== 'pending';
 

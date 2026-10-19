@@ -8,7 +8,7 @@ import { looksLikeAddress } from '../lib/format';
 import { FIXTURE_ATTESTATIONS, type AttestationFixture } from '../fixtures/attestationFixtures';
 import {
   validateVerifyClaimInput,
-  verifyClaim,
+  verifyClaimOnChain,
   type VerifyClaimFieldErrors,
   type VerifyClaimResult,
 } from '../lib/attestationVerify';
@@ -146,31 +146,40 @@ export const AttestationLookup = () => {
   const [claimForm, setClaimForm] = useState(EMPTY_CLAIM_FORM);
   const [claimErrors, setClaimErrors] = useState<VerifyClaimFieldErrors>({});
   const [claimResult, setClaimResult] = useState<VerifyClaimResult | null>(null);
+  const [claimChecking, setClaimChecking] = useState(false);
+  const [claimError, setClaimError] = useState<string | null>(null);
 
   const updateClaimField = (field: keyof typeof EMPTY_CLAIM_FORM) => (event: ChangeEvent<HTMLInputElement>) => {
     setClaimForm((prev) => ({ ...prev, [field]: event.target.value }));
   };
 
-  const fillClaimSample = (attestation: AttestationFixture) => {
-    setClaimForm({
-      uid: attestation.uid,
-      subject: attestation.subject,
-      schema: attestation.schema,
-      attester: attestation.attester,
-    });
-    setClaimErrors({});
-    setClaimResult(null);
-  };
-
-  const handleClaimSubmit = (event: FormEvent) => {
+  const handleClaimSubmit = async (event: FormEvent) => {
     event.preventDefault();
     const errors = validateVerifyClaimInput(claimForm);
     setClaimErrors(errors);
     if (Object.keys(errors).length > 0) {
       setClaimResult(null);
+      setClaimError(null);
       return;
     }
-    setClaimResult(verifyClaim(FIXTURE_ATTESTATIONS, claimForm));
+
+    setClaimResult(null);
+    setClaimError(null);
+    setClaimChecking(true);
+
+    try {
+      // uid and schema are valid 64-char hex (validated above), so this is a
+      // real on-chain call. The fixture path (`verifyClaim`) is kept as a
+      // fallback for callers that pass human-readable sample ids, but
+      // `validateVerifyClaimInput` now requires hex, so sample forms that
+      // predate hex uids will show a validation error before reaching here.
+      const result = await verifyClaimOnChain(attest, claimForm);
+      setClaimResult(result);
+    } catch (caught) {
+      setClaimError(explain(caught, 'attest').message);
+    } finally {
+      setClaimChecking(false);
+    }
   };
 
   return (
@@ -381,11 +390,15 @@ export const AttestationLookup = () => {
             one — signed by someone else, or about someone else — so gating anything of value on
             it should use this check, not just whether it exists.
           </p>
+          <p className="typo-text text-muted attest-lookup__claim-intro">
+            All four fields are read on-chain: uid and schema are 64-character hex strings
+            (the on-chain ids); subject and attester are Stellar addresses.
+          </p>
 
-          <form onSubmit={handleClaimSubmit} className="attest-lookup__claim-form" noValidate>
+          <form onSubmit={(e) => void handleClaimSubmit(e)} className="attest-lookup__claim-form" noValidate>
             <Field
-              label="Attestation id"
-              placeholder="Attestation id"
+              label="Attestation uid (hex)"
+              placeholder="64-character hex uid"
               value={claimForm.uid}
               onChange={updateClaimField('uid')}
               error={claimErrors.uid}
@@ -398,8 +411,8 @@ export const AttestationLookup = () => {
               error={claimErrors.subject}
             />
             <Field
-              label="Schema"
-              placeholder="e.g. condition-met/v1"
+              label="Schema uid (hex)"
+              placeholder="64-character hex schema uid"
               value={claimForm.schema}
               onChange={updateClaimField('schema')}
               error={claimErrors.schema}
@@ -411,27 +424,24 @@ export const AttestationLookup = () => {
               onChange={updateClaimField('attester')}
               error={claimErrors.attester}
             />
-            <button type="submit" className="attest-lookup__submit">
-              Check claim
+            <button type="submit" className="attest-lookup__submit" disabled={claimChecking}>
+              {claimChecking ? 'Checking…' : 'Check claim'}
             </button>
           </form>
 
-          <div className="attest-lookup__samples">
-            <span>Try a sample:</span>
-            {FIXTURE_ATTESTATIONS.map((a) => (
-              <button
-                key={a.uid}
-                type="button"
-                className="attest-lookup__sample"
-                onClick={() => fillClaimSample(a)}
-              >
-                {a.uid}
-              </button>
-            ))}
-          </div>
-
           <div aria-live="polite" className="attest-lookup__results">
-            {claimResult && (
+            {claimChecking && (
+              <div className="attest-claim-result attest-claim-result--checking">
+                <span className="attest-claim-result__text">Checking on-chain…</span>
+              </div>
+            )}
+            {claimError && !claimChecking && (
+              <div className="attest-claim-result attest-claim-result--no" role="alert">
+                <Badge tone="danger">Error</Badge>
+                <span className="attest-claim-result__text">{claimError}</span>
+              </div>
+            )}
+            {claimResult && !claimChecking && (
               <div className={`attest-claim-result attest-claim-result--${claimResult.valid ? 'yes' : 'no'}`}>
                 <Badge tone={claimResult.valid ? 'success' : 'danger'}>
                   {claimResult.valid ? 'Yes' : 'No'}
@@ -443,9 +453,6 @@ export const AttestationLookup = () => {
                 </span>
               </div>
             )}
-            <span className="attest-lookup__sample-note">
-              Sample attestations for the design phase.
-            </span>
           </div>
         </>
       )}

@@ -69,6 +69,15 @@ export const SpendPolicy = () => {
   const viewedWallet = walletError ? '' : walletInput.trim() || address;
   const canRead = signedIn && viewedWallet !== '';
 
+  // --- Which wallet is being inspected / managed --------------------------
+  const [walletInput, setWalletInput] = useState('');
+  const walletError =
+    walletInput.trim() !== '' && !looksLikeAddress(walletInput.trim())
+      ? 'Enter a valid wallet address.'
+      : null;
+  const viewedWallet = walletError ? '' : walletInput.trim() || address;
+  const canRead = signedIn && viewedWallet !== '';
+
   const installedRead = useContractRead<boolean>(
     () => policy.is_installed({ wallet: viewedWallet }),
     [policy, viewedWallet],
