@@ -96,6 +96,21 @@ CI also checks that every page and component CSS file uses design tokens
 spacing off the 4px scale. See [Design-system guard](frontend/CONTRIBUTING.md#design-system-guard)
 for details and how to run it locally (`npm run check:design-system --prefix frontend`
 or with `--diff-base <commit>` for diff mode).
+### Contract error explanations
+
+Every `#[contracterror]` variant in `contracts/` must have a plain-language
+explanation in `frontend/src/lib/errors.ts`, so no failure reaches a user as
+"unknown error". The `bindings` job checks both directions on every pull
+request: a code the app does not explain, and an explanation for a code the
+contract no longer has. Run it locally from the repository root:
+
+```bash
+python3 scripts/check-error-parity.py
+```
+
+It lists each mismatch by contract, code and variant name. When you add an
+error variant, add its entry to the matching table in the same pull request.
+
 ### Automated accessibility checks
 
 Every route in `frontend/src/routes.ts` is rendered in jsdom, in both the light
