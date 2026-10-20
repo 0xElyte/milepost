@@ -86,6 +86,22 @@ tests decode events through the bindings' own specs, so they fail on it.
 
 CI does the same on every PR, in the `bindings` job.
 
+The same job also installs the packages the way an integrator would. If you
+change anything in `packages/*/package.json` (`exports`, `typings`, `type`,
+`files`), run this after building the packages:
+
+```bash
+./scripts/check-bindings-consumable.sh
+```
+
+It packs all five packages, installs the tarballs into an empty project,
+imports each one under Node ESM and typechecks a file that constructs every
+`Client` with `tsc --noEmit` (`module: nodenext`). A broken `exports` map or a
+missing type file fails it, even though `npm pack --dry-run` would not notice.
+It needs network access to the npm registry. Build the packages first with
+`npm ci && npm run build` in each `packages/<name>`, or by running
+`./scripts/frontend-with-local-bindings.sh`, which builds them on the way.
+
 The same job fails if a component shows a `FIXTURE_*` stand-in without its
 "Sample data" tag. See [Sample data](frontend/CONTRIBUTING.md#sample-data) in
 the frontend guide for the rule, the allowlist and how to run the check
@@ -321,6 +337,19 @@ If you are modifying the Soroban smart contracts, error codes are part of the co
 3. **Always assign new variants the next available integer.** Do not insert variants mid-sequence; append them at the end of the enum.
 
 Why this matters: Stellar contract error codes propagate as `u32` values in the transaction result. If we reused a previously published discriminant, an indexer or bot that matches on that numeric value could silently misinterpret a new error as an old, unrelated one.
+
+### Every error variant needs a test
+
+CI fails if a `#[contracterror]` variant is never asserted by its own contract's tests (`contracts/<name>/src/*test*.rs`). A test counts if it names the variant as `Enum::Variant` (e.g. `Error::FeeTooHigh`) or matches its code as `Error(Contract, #N)`. Mentions in comments do not count, and when two enums in one contract share a code, only the name does. Placeholders for removed variants (underscored names, rule 2 above) are skipped.
+
+Run it locally from the repository root (no build needed):
+
+```bash
+./scripts/check-untested-errors.py              # the check CI runs
+python3 scripts/check-untested-errors.test.py   # its own tests
+```
+
+If you add a variant, add a test that returns it. If a variant genuinely cannot be reached, list it in `scripts/untested-errors-allowlist.txt` as `<contract> <Enum>::<Variant>  <reason>`. An entry without a reason fails, and so does an entry for a variant that is now tested or no longer exists, so when you write the missing test, delete its line in the same PR.
 
 ---
 
