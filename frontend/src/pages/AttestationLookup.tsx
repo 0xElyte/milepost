@@ -504,6 +504,7 @@ export const AttestationLookup = () => {
                 <article key={attestation.uid} className="attest-result-card">
                   <div className="attest-result-card__head">
                     <span className="attest-result-card__uid">{attestation.uid}</span>
+                    <Badge tone="warning">Sample data</Badge>
                     {attestation.revoked ? (
                       <Badge tone="danger">Revoked</Badge>
                     ) : (
