@@ -256,3 +256,26 @@ jobs:
       - name: Check every route with axe
         run: npm run test:a11y --prefix frontend
 
+  malware:
+    name: Malware check
+    runs-on: ubuntu-latest
+    # Read-only, and it installs nothing: the check has no dependencies, so a
+    # hostile package in a PR's lockfile is looked up, never run.
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      # Known-malicious packages (OSV MAL- entries) in every lockfile, new
+      # install scripts, packages from outside the registries, worm files,
+      # pull_request_target workflows and hidden Unicode. Exceptions go in
+      # .github/malware-check-allowlist.json with a reason. See the header of
+      # scripts/check-malware.mjs.
+      - name: Check for supply-chain malware
+        run: node scripts/check-malware.mjs
+
+      - name: Test the malware check
+        run: node --test scripts/check-malware.test.mjs

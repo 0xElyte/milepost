@@ -274,6 +274,14 @@ Before marking a PR ready for review:
 * If a contract interface changed, the app in `frontend/` still builds and tests against it (see [Frontend](#3-frontend))
 * PR description references the issue number(s) with `Closes #<number>`
 
+**Malware check**
+Every PR runs `node scripts/check-malware.mjs`. It fails if a lockfile pins a
+package version known to be malicious, if a new dependency runs an install
+script, if a package comes from outside the npm or crates.io registries, if a
+workflow uses `pull_request_target`, or if a file contains hidden Unicode. If
+your dependency is legitimately blocked, say why in the PR. A maintainer
+records the exception, with its reason, in `.github/malware-check-allowlist.json`.
+
 ---
 
 ## 7. Error Code Stability Policy
