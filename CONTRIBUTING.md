@@ -91,6 +91,11 @@ The same job fails if a component shows a `FIXTURE_*` stand-in without its
 the frontend guide for the rule, the allowlist and how to run the check
 locally (`npm run check:sample-tags --prefix frontend`).
 
+CI also checks that every page and component CSS file uses design tokens
+(`frontend/scripts/check-design-system.mjs`), failing on hard-coded colours or
+spacing off the 4px scale. See [Design-system guard](frontend/CONTRIBUTING.md#design-system-guard)
+for details and how to run it locally (`npm run check:design-system --prefix frontend`
+or with `--diff-base <commit>` for diff mode).
 ### Automated accessibility checks
 
 Every route in `frontend/src/routes.ts` is rendered in jsdom, in both the light
